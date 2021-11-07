@@ -1,3 +1,18 @@
+#ifdef ESP8266
+
+// ESP8266 Feather pinout (top row starting from corner)
+#define LEDARRAY_D 4
+#define LEDARRAY_C 5
+#define LEDARRAY_B 2
+#define LEDARRAY_A 16
+#define LEDARRAY_G 0
+#define LEDARRAY_DI 15
+#define LEDARRAY_CLK 13
+#define LEDARRAY_LAT 12
+
+#else
+
+// Arduino pinout (top row starting from corner after TX/RX)
 #define LEDARRAY_D 2
 #define LEDARRAY_C 3
 #define LEDARRAY_B 4
@@ -6,6 +21,8 @@
 #define LEDARRAY_DI 7
 #define LEDARRAY_CLK 8
 #define LEDARRAY_LAT 9
+
+#endif
 
 int pix[] = {
   0,0,0,0,0,0,1,0,
