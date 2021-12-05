@@ -1,3 +1,6 @@
+/*
+Legacy pin definitions
+
 #ifdef ESP8266
 
 // ESP8266 Feather pinout (top row starting from corner)
@@ -23,6 +26,24 @@
 #define LEDARRAY_LAT 9
 
 #endif
+*/
+
+// Arduino pins 2-7
+#define PORTD_D (1 << 2)
+#define PORTD_C (1 << 3)
+#define PORTD_B   (1 << 4)
+#define PORTD_A   (1 << 5)
+#define PORTD_G   (1 << 6)
+#define PORTD_DI   (1 << 7)
+
+// Arduino pins 8-9
+#define PORTB_CLK (1 << 0)
+#define PORTB_LAT  (1 << 1)
+
+#define SET(port, pinset) (port |= (pinset))
+#define CLR(port, pinset) (port &= (~(pinset)))
+#define SET_MASK(port, mask, pinset) (port = (port & (~(mask))) | (pinset))
+#define NOP() __asm__("nop\n\t")
 
 // Y-line = 0 is on the side with data connectors
 // when it is at the top, X-pixels are fed into shift registers from right to left
@@ -62,21 +83,27 @@ int pix[] = {
 };
 
 void setup() {
-  pinMode(LEDARRAY_D, OUTPUT);
-  pinMode(LEDARRAY_C, OUTPUT);
-  pinMode(LEDARRAY_B, OUTPUT);
-  pinMode(LEDARRAY_A, OUTPUT);
-  pinMode(LEDARRAY_G, OUTPUT);
-  pinMode(LEDARRAY_DI, OUTPUT);
-  pinMode(LEDARRAY_CLK, OUTPUT);
-  pinMode(LEDARRAY_LAT, OUTPUT);
+  // set pin mode to output
+  SET(DDRD, (
+    PORTD_D |
+    PORTD_C |
+    PORTD_B |
+    PORTD_A |
+    PORTD_G |
+    PORTD_DI
+  ));
+
+  SET(DDRB, (
+    PORTB_CLK |
+    PORTB_LAT
+  ));
 
   // reset the X-data latch and clock
-  digitalWrite(LEDARRAY_LAT, LOW);
-  digitalWrite(LEDARRAY_CLK, LOW);
+  CLR(PORTB, PORTB_LAT);
+  CLR(PORTB, PORTB_CLK);
 
   // turn off display
-  digitalWrite(LEDARRAY_G, HIGH);
+  SET(PORTD, PORTD_G);
 }
 
 void loop() {
@@ -85,26 +112,31 @@ void loop() {
   for (int i = 0; i < 16; i++) {
     // send data and latch it
     for (int dot = 0; dot < 32; dot++) {
-      digitalWrite(LEDARRAY_DI, *pixPtr ? LOW : HIGH);
+      SET_MASK(PORTD, PORTD_DI, *pixPtr ? 0 : PORTD_DI);
+      NOP();
 
-      digitalWrite(LEDARRAY_CLK, HIGH);
-      digitalWrite(LEDARRAY_CLK, LOW);
+      SET(PORTB, PORTB_CLK);
+      NOP();
+      CLR(PORTB, PORTB_CLK);
+      NOP();
 
       pixPtr += 1;
     }
 
-    digitalWrite(LEDARRAY_LAT, HIGH);
-    digitalWrite(LEDARRAY_LAT, LOW);
+    SET(PORTB, PORTB_LAT);
+    NOP();
+    CLR(PORTB, PORTB_LAT);
 
     // select Y-line
-    digitalWrite(LEDARRAY_D, (i >> 3) & 1);
-    digitalWrite(LEDARRAY_C, (i >> 2) & 1);
-    digitalWrite(LEDARRAY_B, (i >> 1) & 1);
-    digitalWrite(LEDARRAY_A, (i) & 1);
+    uint8_t yLinePins = ((i) & 1) ? PORTD_A : 0;
+    yLinePins |= ((i >> 1) & 1) ? PORTD_B : 0;
+    yLinePins |= ((i >> 2) & 1) ? PORTD_C : 0;
+    yLinePins |= ((i >> 3) & 1) ? PORTD_D : 0;
+    SET_MASK(PORTD, (PORTD_D | PORTD_C | PORTD_B | PORTD_A), yLinePins);
 
     // toggle display
-    digitalWrite(LEDARRAY_G, LOW);
-    delayMicroseconds(400);
-    digitalWrite(LEDARRAY_G, HIGH);
+    CLR(PORTD, PORTD_G);
+    delayMicroseconds(300);
+    SET(PORTD, PORTD_G);
   }
 }
